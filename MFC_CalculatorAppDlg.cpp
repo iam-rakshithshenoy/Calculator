@@ -69,22 +69,23 @@ BEGIN_MESSAGE_MAP(CMFCCalculatorAppDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
-	ON_BN_CLICKED(IDC_BUTTON_7, &CMFCCalculatorAppDlg::OnBnClickedButton7)
-	ON_BN_CLICKED(IDC_BUTTON_8, &CMFCCalculatorAppDlg::OnBnClickedButton8)
-	ON_BN_CLICKED(IDC_BUTTON_ADD, &CMFCCalculatorAppDlg::OnBnClickedButtonAdd)
-	ON_BN_CLICKED(IDC_BUTTON_EQUAL, &CMFCCalculatorAppDlg::OnBnClickedButtonEqual)
-	ON_BN_CLICKED(IDC_BUTTON_9, &CMFCCalculatorAppDlg::OnBnClickedButton9)
+	ON_BN_CLICKED(IDC_BUTTON_0, &CMFCCalculatorAppDlg::OnBnClickedButton0)
+	ON_BN_CLICKED(IDC_BUTTON_1, &CMFCCalculatorAppDlg::OnBnClickedButton1)
+	ON_BN_CLICKED(IDC_BUTTON_2, &CMFCCalculatorAppDlg::OnBnClickedButton2)
+	ON_BN_CLICKED(IDC_BUTTON_3, &CMFCCalculatorAppDlg::OnBnClickedButton3)
 	ON_BN_CLICKED(IDC_BUTTON_4, &CMFCCalculatorAppDlg::OnBnClickedButton4)
 	ON_BN_CLICKED(IDC_BUTTON_5, &CMFCCalculatorAppDlg::OnBnClickedButton5)
 	ON_BN_CLICKED(IDC_BUTTON_6, &CMFCCalculatorAppDlg::OnBnClickedButton6)
-	ON_BN_CLICKED(IDC_BUTTON_3, &CMFCCalculatorAppDlg::OnBnClickedButton3)
-	ON_BN_CLICKED(IDC_BUTTON_2, &CMFCCalculatorAppDlg::OnBnClickedButton2)
-	ON_BN_CLICKED(IDC_BUTTON_1, &CMFCCalculatorAppDlg::OnBnClickedButton1)
+	ON_BN_CLICKED(IDC_BUTTON_7, &CMFCCalculatorAppDlg::OnBnClickedButton7)
+	ON_BN_CLICKED(IDC_BUTTON_8, &CMFCCalculatorAppDlg::OnBnClickedButton8)
+	ON_BN_CLICKED(IDC_BUTTON_9, &CMFCCalculatorAppDlg::OnBnClickedButton9)
+	ON_BN_CLICKED(IDC_BUTTON_ADD, &CMFCCalculatorAppDlg::OnBnClickedButtonAdd)
 	ON_BN_CLICKED(IDC_BUTTON_SUBTRACT, &CMFCCalculatorAppDlg::OnBnClickedButtonSubtract)
 	ON_BN_CLICKED(IDC_BUTTON_MULTIPLY, &CMFCCalculatorAppDlg::OnBnClickedButtonMultiply)
 	ON_BN_CLICKED(IDC_BUTTON_DIVIDE, &CMFCCalculatorAppDlg::OnBnClickedButtonDivide)
-	ON_BN_CLICKED(IDC_BUTTON_CLEAR, &CMFCCalculatorAppDlg::OnBnClickedButtonClear)
 	ON_BN_CLICKED(IDC_BUTTON_DECIMAL, &CMFCCalculatorAppDlg::OnBnClickedButtonDecimal)
+	ON_BN_CLICKED(IDC_BUTTON_CLEAR, &CMFCCalculatorAppDlg::OnBnClickedButtonClear)
+	ON_BN_CLICKED(IDC_BUTTON_EQUAL, &CMFCCalculatorAppDlg::OnBnClickedButtonEqual)
 END_MESSAGE_MAP()
 
 
@@ -193,24 +194,29 @@ double CMFCCalculatorAppDlg::EvaluateExpression(const std::string& expression, b
 
 	for (size_t i = 0; i < expression.length(); i++) {
 		// Skip whitespace
-		if (isspace(expression[i])) continue;
+		if (isspace(static_cast<unsigned char>(expression[i]))) continue;
 
 		// If current character is a number, push it to the 'values' stack
-		if (isdigit(expression[i]) || expression[i] == '.') {
+		if (isdigit(static_cast<unsigned char>(expression[i])) || expression[i] == '.') {
 			std::stringstream ss;
-			while (i < expression.length() && (isdigit(expression[i]) || expression[i] == '.')) {
+			while (i < expression.length() && (isdigit(static_cast<unsigned char>(expression[i])) || expression[i] == '.')) {
 				ss << expression[i++];
 			}
-			double value;
+			double value = 0.0;
 			ss >> value;
 			values.push(value);
 			i--; // Since we increment `i` in the loop, we need to decrement it.
 		}
 		// If current character is an operator
 		else if (expression[i] == '+' || expression[i] == '-' ||
-			expression[i] == 'x' || expression[i] == '/') {
+			expression[i] == 'x' || expression[i] == '*' || expression[i] == '/') {
+			char currOp = (expression[i] == '*') ? 'x' : expression[i];
 			// While top of 'ops' has the same or greater precedence to current operator, apply the operator
-			while (!ops.empty() && GetPrecedence(ops.top()) >= GetPrecedence(expression[i])) {
+			while (!ops.empty() && GetPrecedence(ops.top()) >= GetPrecedence(currOp)) {
+				if (values.size() < 2) {
+					success = false;
+					throw std::runtime_error("Malformed expression");
+				}
 				double val2 = values.top(); values.pop();
 				double val1 = values.top(); values.pop();
 				char op = ops.top(); ops.pop();
@@ -218,21 +224,31 @@ double CMFCCalculatorAppDlg::EvaluateExpression(const std::string& expression, b
 				values.push(ApplyOperation(val1, val2, op));
 			}
 			// Push current operator to 'ops'
-			ops.push(expression[i]);
+			ops.push(currOp);
 		}
-		// Handle parentheses (optional, but commonly supported in calculators)
+		// Handle parentheses
 		else if (expression[i] == '(') {
 			ops.push('(');
 		}
 		else if (expression[i] == ')') {
 			while (!ops.empty() && ops.top() != '(') {
+				if (values.size() < 2) {
+					success = false;
+					throw std::runtime_error("Malformed expression");
+				}
 				double val2 = values.top(); values.pop();
 				double val1 = values.top(); values.pop();
 				char op = ops.top(); ops.pop();
 
 				values.push(ApplyOperation(val1, val2, op));
 			}
-			if (!ops.empty()) ops.pop(); // Remove '(' from stack
+			if (!ops.empty()) {
+				ops.pop(); // Remove '(' from stack
+			}
+			else {
+				success = false;
+				throw std::runtime_error("Mismatched parentheses");
+			}
 		}
 		else {
 			success = false;
@@ -242,6 +258,14 @@ double CMFCCalculatorAppDlg::EvaluateExpression(const std::string& expression, b
 
 	// Apply remaining operators to remaining values
 	while (!ops.empty()) {
+		if (ops.top() == '(' || ops.top() == ')') {
+			success = false;
+			throw std::runtime_error("Mismatched parentheses");
+		}
+		if (values.size() < 2) {
+			success = false;
+			throw std::runtime_error("Malformed expression");
+		}
 		double val2 = values.top(); values.pop();
 		double val1 = values.top(); values.pop();
 		char op = ops.top(); ops.pop();
@@ -250,6 +274,11 @@ double CMFCCalculatorAppDlg::EvaluateExpression(const std::string& expression, b
 	}
 
 	// The top of 'values' stack contains the result
+	if (values.empty()) {
+		success = false;
+		throw std::runtime_error("Empty expression");
+	}
+
 	return values.top();
 }
 
@@ -261,184 +290,132 @@ HCURSOR CMFCCalculatorAppDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
-void CMFCCalculatorAppDlg::OnBnClickedButtonAdd()
+void CMFCCalculatorAppDlg::AppendToDisplay(const CString& str)
 {
-	// TODO: Add your control notification handler code here
-	m_editDisplay.GetWindowText(currentText);
-
-	// Append "+" to the current expression
-	currentText += _T("+");
-
-	// Update the display
-	m_editDisplay.SetWindowText(currentText);
+	CString text;
+	m_editDisplay.GetWindowText(text);
+	text += str;
+	m_editDisplay.SetWindowText(text);
 }
-
 
 void CMFCCalculatorAppDlg::OnBnClickedButtonEqual()
 {
-	// TODO: Add your control notification handler code here
 	CString expression;
 	m_editDisplay.GetWindowText(expression);
+
+	if (expression.IsEmpty())
+	{
+		return;
+	}
 
 	// Convert CString to std::string for evaluation
 	CT2CA pszConvertedAnsiString(expression);
 	std::string strExpr(pszConvertedAnsiString);
 
-	// Evaluate the expression
-	bool success = false;
-	double result = EvaluateExpression(strExpr, success);
+	try
+	{
+		bool success = false;
+		double result = EvaluateExpression(strExpr, success);
 
-	if (success)
-	{
-		// Convert result back to CString and display it
-		CString resultStr;
-		resultStr.Format(_T("%g"), result);
-		m_editDisplay.SetWindowText(resultStr);
+		if (success)
+		{
+			// Convert result back to CString and display it
+			CString resultStr;
+			resultStr.Format(_T("%g"), result);
+			m_editDisplay.SetWindowText(resultStr);
+		}
+		else
+		{
+			m_editDisplay.SetWindowText(_T("Error"));
+		}
 	}
-	else
+	catch (const std::exception& ex)
 	{
-		// Display error message
+		CString errorMsg(ex.what());
+		m_editDisplay.SetWindowText(errorMsg);
+	}
+	catch (...)
+	{
 		m_editDisplay.SetWindowText(_T("Error"));
 	}
 }
 
-
-void CMFCCalculatorAppDlg::OnBnClickedButton9()
+void CMFCCalculatorAppDlg::OnBnClickedButton0()
 {
-	// TODO: Add your control notification handler code here
-	m_editDisplay.GetWindowText(currentText);
-	currentText += _T("9"); // Append '9' to the display
-	m_editDisplay.SetWindowText(currentText);
+	AppendToDisplay(_T("0"));
+}
+
+void CMFCCalculatorAppDlg::OnBnClickedButton1()
+{
+	AppendToDisplay(_T("1"));
+}
+
+void CMFCCalculatorAppDlg::OnBnClickedButton2()
+{
+	AppendToDisplay(_T("2"));
+}
+
+void CMFCCalculatorAppDlg::OnBnClickedButton3()
+{
+	AppendToDisplay(_T("3"));
+}
+
+void CMFCCalculatorAppDlg::OnBnClickedButton4()
+{
+	AppendToDisplay(_T("4"));
+}
+
+void CMFCCalculatorAppDlg::OnBnClickedButton5()
+{
+	AppendToDisplay(_T("5"));
+}
+
+void CMFCCalculatorAppDlg::OnBnClickedButton6()
+{
+	AppendToDisplay(_T("6"));
 }
 
 void CMFCCalculatorAppDlg::OnBnClickedButton7()
 {
-	// TODO: Add your control notification handler code here
-	CString currentText;
-	m_editDisplay.GetWindowText(currentText);
-	currentText += _T("7"); // Append '7' to the display
-	m_editDisplay.SetWindowText(currentText);
+	AppendToDisplay(_T("7"));
 }
-
 
 void CMFCCalculatorAppDlg::OnBnClickedButton8()
 {
-	// TODO: Add your control notification handler code here
-	m_editDisplay.GetWindowText(currentText);
-	currentText += _T("8"); // Append '8' to the display
-	m_editDisplay.SetWindowText(currentText);
+	AppendToDisplay(_T("8"));
 }
 
-
-void CMFCCalculatorAppDlg::OnBnClickedButton4()
+void CMFCCalculatorAppDlg::OnBnClickedButton9()
 {
-	// TODO: Add your control notification handler code here
-	m_editDisplay.GetWindowText(currentText);
-	currentText += _T("4"); // Append '4' to the display
-	m_editDisplay.SetWindowText(currentText);
+	AppendToDisplay(_T("9"));
 }
 
-
-
-void CMFCCalculatorAppDlg::OnBnClickedButton5()
+void CMFCCalculatorAppDlg::OnBnClickedButtonAdd()
 {
-	// TODO: Add your control notification handler code here
-	m_editDisplay.GetWindowText(currentText);
-	currentText += _T("5"); // Append '5' to the display
-	m_editDisplay.SetWindowText(currentText);
+	AppendToDisplay(_T("+"));
 }
-
-
-
-
-
-void CMFCCalculatorAppDlg::OnBnClickedButton6()
-{
-	// TODO: Add your control notification handler code here
-	m_editDisplay.GetWindowText(currentText);
-	currentText += _T("6"); // Append '6' to the display
-	m_editDisplay.SetWindowText(currentText);
-}
-
-
-void CMFCCalculatorAppDlg::OnBnClickedButton3()
-{
-	// TODO: Add your control notification handler code here
-	m_editDisplay.GetWindowText(currentText);
-	currentText += _T("3"); // Append '3' to the display
-	m_editDisplay.SetWindowText(currentText);
-}
-
-
-void CMFCCalculatorAppDlg::OnBnClickedButton2()
-{
-	// TODO: Add your control notification handler code here
-	m_editDisplay.GetWindowText(currentText);
-	currentText += _T("2"); // Append '2' to the display
-	m_editDisplay.SetWindowText(currentText);
-}
-
-
-void CMFCCalculatorAppDlg::OnBnClickedButton1()
-{
-	// TODO: Add your control notification handler code here
-	m_editDisplay.GetWindowText(currentText);
-	currentText += _T("1"); // Append '1' to the display
-	m_editDisplay.SetWindowText(currentText);
-}
-
 
 void CMFCCalculatorAppDlg::OnBnClickedButtonSubtract()
 {
-	// TODO: Add your control notification handler code here
-	m_editDisplay.GetWindowText(currentText);
-
-	// Append "-" to the current expression
-	currentText += _T("-");
-
-	// Update the display
-	m_editDisplay.SetWindowText(currentText);
+	AppendToDisplay(_T("-"));
 }
-
 
 void CMFCCalculatorAppDlg::OnBnClickedButtonMultiply()
 {
-	// TODO: Add your control notification handler code here
-	m_editDisplay.GetWindowText(currentText);
-
-	// Append "x" to the current expression
-	currentText += _T("x");
-
-	// Update the display
-	m_editDisplay.SetWindowText(currentText);
+	AppendToDisplay(_T("x"));
 }
-
 
 void CMFCCalculatorAppDlg::OnBnClickedButtonDivide()
 {
-	// TODO: Add your control notification handler code here
-	m_editDisplay.GetWindowText(currentText);
-
-	// Append "/" to the current expression
-	currentText += _T("/");
-
-	// Update the display
-	m_editDisplay.SetWindowText(currentText);
+	AppendToDisplay(_T("/"));
 }
-
-
-void CMFCCalculatorAppDlg::OnBnClickedButtonClear()
-{
-	// TODO: Add your control notification handler code here
-	currentText = _T("");
-	m_editDisplay.SetWindowText(currentText);
-}
-
 
 void CMFCCalculatorAppDlg::OnBnClickedButtonDecimal()
 {
-	// TODO: Add your control notification handler code here
-	m_editDisplay.GetWindowText(currentText);
-	currentText += _T("."); // Append '.' to the display
-	m_editDisplay.SetWindowText(currentText);
+	AppendToDisplay(_T("."));
+}
+
+void CMFCCalculatorAppDlg::OnBnClickedButtonClear()
+{
+	m_editDisplay.SetWindowText(_T(""));
 }

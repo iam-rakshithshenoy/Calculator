@@ -30,7 +30,6 @@ protected:
 	// Implementation
 protected:
 	HICON m_hIcon;
-	CString currentText;
 	// Generated message map functions
 	virtual BOOL OnInitDialog();
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
@@ -38,7 +37,8 @@ protected:
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
 public:
-	
+	void AppendToDisplay(const CString& str);
+	afx_msg void OnBnClickedButton0();
 	afx_msg void OnBnClickedButton7();
 	afx_msg void OnBnClickedButton8();
 	CEdit m_editDisplay;
