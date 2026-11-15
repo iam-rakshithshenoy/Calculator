@@ -25,7 +25,7 @@ public:
 
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV support
-	
+	static int dotcount;
 
 	// Implementation
 protected:
