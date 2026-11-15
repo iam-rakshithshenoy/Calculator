@@ -88,7 +88,7 @@ BEGIN_MESSAGE_MAP(CMFCCalculatorAppDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_EQUAL, &CMFCCalculatorAppDlg::OnBnClickedButtonEqual)
 END_MESSAGE_MAP()
 
-
+int CMFCCalculatorAppDlg::dotcount = 0;
 // CMFCCalculatorAppDlg message handlers
 
 BOOL CMFCCalculatorAppDlg::OnInitDialog()
@@ -274,9 +274,9 @@ double CMFCCalculatorAppDlg::EvaluateExpression(const std::string& expression, b
 	}
 
 	// The top of 'values' stack contains the result
-	if (values.empty()) {
+	if (values.size() !=1) {
 		success = false;
-		throw std::runtime_error("Empty expression");
+		throw std::runtime_error("Malformed expression");
 	}
 
 	return values.top();
@@ -323,6 +323,7 @@ void CMFCCalculatorAppDlg::OnBnClickedButtonEqual()
 			CString resultStr;
 			resultStr.Format(_T("%g"), result);
 			m_editDisplay.SetWindowText(resultStr);
+			dotcount = 0;  // Reset decimal counter for new number
 		}
 		else
 		{
@@ -393,29 +394,39 @@ void CMFCCalculatorAppDlg::OnBnClickedButton9()
 void CMFCCalculatorAppDlg::OnBnClickedButtonAdd()
 {
 	AppendToDisplay(_T("+"));
+	dotcount = 0;  // Reset decimal counter for new number
+
 }
 
 void CMFCCalculatorAppDlg::OnBnClickedButtonSubtract()
 {
 	AppendToDisplay(_T("-"));
+	dotcount = 0;  // Reset decimal counter for new number
 }
 
 void CMFCCalculatorAppDlg::OnBnClickedButtonMultiply()
 {
 	AppendToDisplay(_T("x"));
+	dotcount = 0;  // Reset decimal counter for new number
 }
 
 void CMFCCalculatorAppDlg::OnBnClickedButtonDivide()
 {
 	AppendToDisplay(_T("/"));
+	dotcount = 0;  // Reset decimal counter for new number
 }
 
 void CMFCCalculatorAppDlg::OnBnClickedButtonDecimal()
 {
-	AppendToDisplay(_T("."));
+	if (dotcount == 0)
+	{
+		AppendToDisplay(_T("."));
+		dotcount++;
+	}
 }
 
 void CMFCCalculatorAppDlg::OnBnClickedButtonClear()
 {
 	m_editDisplay.SetWindowText(_T(""));
+	dotcount = 0;  // Reset decimal counter for new number
 }
